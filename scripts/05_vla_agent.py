@@ -67,7 +67,7 @@ PATHWAY_ERROR     = "error"
 VLLM_BASE_URL  = os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
 VLLM_API_KEY   = os.environ.get("VLLM_API_KEY", "token-encord")   # vLLM ignores value
 VLLM_MODEL     = os.environ.get("VLLM_MODEL", "qwen-vl")          # --served-model-name
-VLLM_MAX_TOKENS = 256                  # JSON output is ~150 tokens; 256 is safe headroom
+VLLM_MAX_TOKENS = 768                  # multi-object frames need ~500 tokens; 768 is safe
 
 # Frame sampling: run inference every Nth frame (delivery videos change slowly)
 INFERENCE_STRIDE = 10
