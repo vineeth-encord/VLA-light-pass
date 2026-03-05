@@ -382,10 +382,13 @@ def main() -> None:
         hashes = json.load(f)
     project_hash = hashes["vla"]["project_hash"]
 
+    # encord-agents reads the SSH key from ENCORD_SSH_KEY_FILE env var
+    os.environ["ENCORD_SSH_KEY_FILE"] = SSH_KEY_PATH
+
     print(f"Connecting to Encord  (key: {SSH_KEY_PATH})")
     print(f"vLLM endpoint         {VLLM_BASE_URL}  model={VLLM_MODEL}")
 
-    runner = Runner(project_hash=project_hash, ssh_private_key_path=SSH_KEY_PATH)
+    runner = Runner(project_hash=project_hash)
     print(f"Project hash          {project_hash}")
     print(f"Agent stage           '{AGENT_STAGE_NAME}'\n")
 
