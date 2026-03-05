@@ -46,6 +46,7 @@ from encord.objects import OntologyStructure
 from encord.objects.coordinates import BoundingBoxCoordinates, PolygonCoordinates
 from encord.storage import StorageItem
 from encord_agents.tasks import Runner
+from encord_agents.core.data_model import Frame
 from encord_agents.tasks.dependencies import dep_storage_item, dep_video_iterator
 from encord_agents.tasks.models import TaskAgentReturnStruct
 from fastapi import Depends
@@ -396,7 +397,7 @@ def main() -> None:
     @runner.stage(stage=AGENT_STAGE_NAME)
     def vla_annotate(
         label_row: LabelRowV2,
-        video_iterator: Annotated[Iterator, Depends(dep_video_iterator)],
+        video_iterator: Annotated[Iterator[Frame], Depends(dep_video_iterator)],
         storage_item:   Annotated[StorageItem, Depends(dep_storage_item)],
     ) -> TaskAgentReturnStruct:
         title = label_row.data_title
