@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# SSH keys (never commit these)
+*.pub
+id_*
+encord_key*
+lambda*
+
+# Encord project hashes (contains real project UUIDs — commit if intentional)
+# project_hashes.json
+
+# Claude Code internal workspace
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Large model files
+*.safetensors
+*.bin
+*.pt
+*.ckpt

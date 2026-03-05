@@ -1,0 +1,137 @@
+{
+  "title": "Multimodal Audio — Voice & Environmental Sound",
+  "description": "Ontology for synchronized audio+video annotation. Covers speech transcription, speaker identification, environmental audio, and cross-modal event linking. Designed for multilingual voice AI training and world model audio conditioning.",
+  "version": "1.0",
+  "objects": [
+    {
+      "name": "Speech Segment",
+      "shape": "BOUNDING_BOX",
+      "description": "A continuous utterance from a single speaker. Draw box around speaker if visible in frame.",
+      "attributes": [
+        {
+          "type": "radio",
+          "name": "speaker_role",
+          "required": true,
+          "options": ["agent_dasher", "recipient_customer", "bystander", "intercom_speaker", "phone_call", "unknown"]
+        },
+        {
+          "type": "radio",
+          "name": "language",
+          "required": true,
+          "options": [
+            "english",
+            "spanish",
+            "mandarin",
+            "cantonese",
+            "portuguese",
+            "french",
+            "arabic",
+            "hindi",
+            "tagalog",
+            "vietnamese",
+            "korean",
+            "japanese",
+            "russian",
+            "other_common",
+            "other_niche"
+          ]
+        },
+        {
+          "type": "text",
+          "name": "transcription",
+          "required": false,
+          "description": "Verbatim transcript in original language"
+        },
+        {
+          "type": "text",
+          "name": "english_translation",
+          "required": false,
+          "description": "English translation if not English"
+        },
+        {
+          "type": "radio",
+          "name": "speech_quality",
+          "required": false,
+          "options": ["clear", "accented", "partially_audible", "inaudible", "overlapping"]
+        }
+      ]
+    },
+    {
+      "name": "Environmental Sound Event",
+      "shape": "BOUNDING_BOX",
+      "description": "Non-speech audio event with identifiable visual source in frame. Draw box around the source.",
+      "attributes": [
+        {
+          "type": "radio",
+          "name": "sound_type",
+          "required": true,
+          "options": [
+            "door_knock",
+            "doorbell_ring",
+            "door_open_close",
+            "vehicle_engine",
+            "vehicle_horn",
+            "footsteps",
+            "keys_jingling",
+            "phone_ring",
+            "elevator_ding",
+            "dog_bark",
+            "crowd_ambient",
+            "other"
+          ]
+        },
+        {
+          "type": "radio",
+          "name": "source_visibility",
+          "required": false,
+          "options": ["fully_visible", "partially_visible", "off_screen"]
+        }
+      ]
+    }
+  ],
+  "frame_classifications": [
+    {
+      "name": "Audio Scene",
+      "description": "Dominant acoustic environment for the current segment.",
+      "type": "radio",
+      "required": true,
+      "options": [
+        "outdoor_quiet",
+        "outdoor_urban_noise",
+        "outdoor_traffic",
+        "indoor_quiet",
+        "indoor_ambient",
+        "indoor_crowded",
+        "transitional"
+      ]
+    },
+    {
+      "name": "Speech Presence",
+      "description": "Whether speech is present in this frame/segment.",
+      "type": "radio",
+      "required": true,
+      "options": [
+        "no_speech",
+        "agent_speaking",
+        "other_speaking",
+        "both_speaking",
+        "speech_unclear"
+      ]
+    },
+    {
+      "name": "Audio Quality Flags",
+      "description": "Technical quality issues affecting transcription accuracy.",
+      "type": "checklist",
+      "required": false,
+      "options": [
+        "wind_noise",
+        "traffic_noise",
+        "echo_reverb",
+        "microphone_rustle",
+        "clipping_distortion",
+        "background_music",
+        "clean_audio"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,224 @@
+{
+  "title": "World Model — Egocentric Scene Understanding",
+  "description": "Ontology for training world models on egocentric video. Captures scene structure, object dynamics, depth context, and temporal continuity. Compatible with GAIA-1, UniSim, and DriveDreamer-style training specifications.",
+  "version": "1.0",
+  "objects": [
+    {
+      "name": "Tracked Object",
+      "shape": "BOUNDING_BOX",
+      "description": "Any persistent object that should be tracked across frames for object permanence modeling.",
+      "attributes": [
+        {
+          "type": "radio",
+          "name": "object_class",
+          "required": true,
+          "options": [
+            "person",
+            "vehicle_car",
+            "vehicle_bike",
+            "vehicle_scooter",
+            "door",
+            "building_facade",
+            "ground_surface",
+            "vegetation",
+            "signage",
+            "carried_item",
+            "furniture",
+            "other"
+          ]
+        },
+        {
+          "type": "radio",
+          "name": "motion_state",
+          "required": true,
+          "options": ["static", "moving_toward", "moving_away", "moving_lateral", "unknown"]
+        },
+        {
+          "type": "radio",
+          "name": "depth_zone",
+          "required": true,
+          "options": ["foreground_0_2m", "near_2_5m", "mid_5_15m", "far_15m_plus"]
+        },
+        {
+          "type": "radio",
+          "name": "occlusion_state",
+          "required": false,
+          "options": ["fully_visible", "partially_occluded", "mostly_occluded", "just_appeared", "just_disappeared"]
+        }
+      ]
+    },
+    {
+      "name": "Navigable Surface",
+      "shape": "POLYGON",
+      "description": "Walkable/drivable surface areas. Used for ground plane estimation and path planning.",
+      "attributes": [
+        {
+          "type": "radio",
+          "name": "surface_type",
+          "required": true,
+          "options": [
+            "paved_sidewalk",
+            "paved_road",
+            "grass",
+            "gravel",
+            "indoor_floor_hard",
+            "indoor_floor_carpet",
+            "steps_stairs",
+            "ramp"
+          ]
+        },
+        {
+          "type": "checklist",
+          "name": "surface_condition",
+          "required": false,
+          "options": ["dry", "wet", "icy", "obstructed", "uneven", "marked_crosswalk"]
+        }
+      ]
+    },
+    {
+      "name": "Structural Element",
+      "shape": "POLYGON",
+      "description": "Fixed architectural or environmental structure. Defines scene layout for spatial reasoning.",
+      "attributes": [
+        {
+          "type": "radio",
+          "name": "element_type",
+          "required": true,
+          "options": [
+            "wall",
+            "door_frame",
+            "window",
+            "pillar_column",
+            "fence_barrier",
+            "ceiling",
+            "sky",
+            "vegetation_boundary",
+            "curb",
+            "staircase"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Depth Anchor Point",
+      "shape": "KEYPOINT",
+      "description": "Known-distance reference points for metric depth calibration. Mark on identifiable surfaces.",
+      "attributes": [
+        {
+          "type": "radio",
+          "name": "estimated_distance",
+          "required": true,
+          "options": ["0_1m", "1_2m", "2_5m", "5_10m", "10_20m", "20m_plus"]
+        },
+        {
+          "type": "radio",
+          "name": "confidence",
+          "required": false,
+          "options": ["high", "medium", "low"]
+        }
+      ]
+    },
+    {
+      "name": "Optical Flow Region",
+      "shape": "BOUNDING_BOX",
+      "description": "Regions with distinct motion patterns. Used to train motion prediction heads.",
+      "attributes": [
+        {
+          "type": "radio",
+          "name": "motion_type",
+          "required": true,
+          "options": [
+            "ego_motion_only",
+            "independent_motion",
+            "camera_induced_parallax",
+            "occluded_background"
+          ]
+        },
+        {
+          "type": "radio",
+          "name": "flow_magnitude",
+          "required": false,
+          "options": ["fast", "medium", "slow", "static"]
+        }
+      ]
+    }
+  ],
+  "frame_classifications": [
+    {
+      "name": "Scene Type",
+      "description": "Top-level scene category for conditioning world model generation.",
+      "type": "radio",
+      "required": true,
+      "options": [
+        "urban_street",
+        "suburban_residential",
+        "urban_commercial",
+        "indoor_lobby",
+        "indoor_corridor",
+        "parking_structure",
+        "mixed_use_building",
+        "outdoor_campus",
+        "other"
+      ]
+    },
+    {
+      "name": "Lighting Condition",
+      "description": "Lighting context for scene appearance modeling.",
+      "type": "radio",
+      "required": true,
+      "options": [
+        "bright_daylight",
+        "overcast",
+        "golden_hour",
+        "twilight_dusk",
+        "nighttime_artificial",
+        "nighttime_dark",
+        "indoor_bright",
+        "indoor_dim"
+      ]
+    },
+    {
+      "name": "Camera Ego-Motion",
+      "description": "Agent's movement relative to the world. Used to train motion conditioning.",
+      "type": "radio",
+      "required": true,
+      "options": [
+        "walking_forward",
+        "walking_turning_left",
+        "walking_turning_right",
+        "stationary_stable",
+        "stationary_panning",
+        "ascending_stairs_ramp",
+        "descending_stairs_ramp",
+        "riding_elevator"
+      ]
+    },
+    {
+      "name": "Scene Dynamics",
+      "description": "How much the scene is changing frame-to-frame.",
+      "type": "radio",
+      "required": false,
+      "options": [
+        "static_scene",
+        "low_activity",
+        "moderate_activity",
+        "high_activity_crowd",
+        "high_activity_traffic"
+      ]
+    },
+    {
+      "name": "Temporal Anomaly",
+      "description": "Flags for events that break expected world model predictions.",
+      "type": "checklist",
+      "required": false,
+      "options": [
+        "sudden_appearance",
+        "sudden_disappearance",
+        "rapid_motion_change",
+        "cut_jump",
+        "frame_drop",
+        "camera_jostle"
+      ]
+    }
+  ]
+}

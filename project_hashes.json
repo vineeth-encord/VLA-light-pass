@@ -1,0 +1,17 @@
+{
+  "vla": {
+    "ontology_hash": "c8f7e67e-2ac6-406f-9a52-0a261ff8c2de",
+    "dataset_hash": "adcfb8d8-0104-48f9-9115-7bc44254360b",
+    "project_hash": "354abd1a-cc04-4cc8-a02a-2da73a7f428a"
+  },
+  "world_model": {
+    "ontology_hash": "dd1fdef9-52e4-4c08-a372-1a0c63001194",
+    "dataset_hash": "4aea14b4-1064-4144-b770-6d1f11d7449e",
+    "project_hash": "fa1923c5-2dcc-4e5a-a50c-21b215d61e60"
+  },
+  "audio": {
+    "ontology_hash": "a0600ad3-6491-44f3-bd5a-1f5aba72319b",
+    "dataset_hash": "5e5c4633-fc18-42f3-8f79-e2073a99cee0",
+    "project_hash": "17e997a4-0a82-4930-9034-fad63abe0528"
+  }
+}
