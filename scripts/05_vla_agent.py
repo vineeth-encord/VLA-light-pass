@@ -50,10 +50,7 @@ from encord_agents.tasks.dependencies import dep_storage_item, dep_video_iterato
 from encord_agents.tasks.models import TaskAgentReturnStruct
 from fastapi import Depends
 
-try:
-    from encord.objects.label_fuse import LabelRowV2
-except ImportError:
-    from encord.client import LabelRowV2
+from encord.objects.ontology_labels_impl import LabelRowV2
 
 # ---------------------------------------------------------------------------
 # Config
