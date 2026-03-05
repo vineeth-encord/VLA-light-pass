@@ -379,6 +379,9 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
                 key = (cls_name, answer)
             cls_groups.setdefault(key, []).append(pred.frame_idx)
 
+    print(f"  Classification groups: {len(cls_groups)} "
+          f"({', '.join(f'{k[0]}={k[1]!r} [{len(v)}f]' for k, v in cls_groups.items())})")
+
     for (cls_name, answer_key), frame_indices in cls_groups.items():
         onto_cls = _find_ontology_classification(ontology, cls_name)
         if onto_cls is None:
@@ -410,7 +413,10 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             cls_instance.set_answer(resolved, attribute)
         except Exception as exc:
             print(f"  [warn] set_answer({cls_name!r}): {exc}")
-        label_row.add_classification_instance(cls_instance)
+        try:
+            label_row.add_classification_instance(cls_instance)
+        except Exception as exc:
+            print(f"  [warn] add_classification({cls_name!r}): {exc}")
 
 
 # ---------------------------------------------------------------------------
@@ -444,6 +450,14 @@ def main() -> None:
         print(f"Processing: {title}")
 
         label_row.initialise_labels(overwrite=True)
+
+        # Purge any previously-saved annotations so we always annotate from a clean slate.
+        # Required because on retry the server may have partial labels from a prior run,
+        # and adding new instances to the same frames raises LabelRowError (overlapping).
+        for inst in list(label_row.get_object_instances()):
+            label_row.remove_object(inst)
+        for inst in list(label_row.get_classification_instances()):
+            label_row.remove_classification(inst)
 
         # Sample frames then run inference in parallel
         sampled = [f for f in video_iterator if f.frame % INFERENCE_STRIDE == 0]
