@@ -41,7 +41,7 @@ from typing import Annotated, Iterator, Optional
 from encord.objects import OntologyStructure
 from encord.objects.classification_instance import ClassificationInstance
 from encord.objects.common import ChecklistAttribute, RadioAttribute
-from encord.objects.coordinates import BoundingBoxCoordinates, PolygonCoordinates
+from encord.objects.coordinates import BoundingBoxCoordinates, PointCoordinate, PolygonCoordinates
 from encord.objects.ontology_object_instance import ObjectInstance
 from encord.storage import StorageItem
 from encord_agents.tasks import Runner
@@ -299,11 +299,25 @@ def _find_ontology_classification(structure: OntologyStructure, cls_name: str):
     return None
 
 
-def _set_attr_answer(instance, attribute_name: str, answer) -> None:
+def _set_attr_answer(instance, attribute_name: str, answer, frame_idx: int = 0) -> None:
+    """Resolve a raw answer to the typed Option object and set it on the instance."""
     for attr in instance.ontology_item.attributes:
         if attr.name == attribute_name:
             try:
-                instance.set_answer(attr, answer)
+                if isinstance(attr, RadioAttribute):
+                    resolved = next(
+                        (opt for opt in attr.options if opt.title == answer), None
+                    )
+                    if resolved is None:
+                        return
+                elif isinstance(attr, ChecklistAttribute):
+                    answer_set = set(answer) if isinstance(answer, list) else {answer}
+                    resolved = [opt for opt in attr.options if opt.title in answer_set]
+                    if not resolved:
+                        return
+                else:
+                    resolved = answer  # TextAttribute
+                instance.set_answer(resolved, attribute=attr, frames=frame_idx)
             except Exception as exc:
                 print(f"  [warn] set_answer({attribute_name!r}): {exc}")
             return
@@ -329,20 +343,20 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             if obj_pred.bbox is not None:
                 x, y, w, h = obj_pred.bbox
                 instance.set_for_frames(
-                    pred.frame_idx,
                     coordinates=BoundingBoxCoordinates(
                         top_left_x=x, top_left_y=y, width=w, height=h
                     ),
+                    frames=pred.frame_idx,
                 )
             elif obj_pred.polygon is not None:
                 instance.set_for_frames(
-                    pred.frame_idx,
                     coordinates=PolygonCoordinates(
-                        values=[{"x": px, "y": py} for px, py in obj_pred.polygon]
+                        values=[PointCoordinate(x=px, y=py) for px, py in obj_pred.polygon]
                     ),
+                    frames=pred.frame_idx,
                 )
             for attr_name, answer in obj_pred.attributes.items():
-                _set_attr_answer(instance, attr_name, answer)
+                _set_attr_answer(instance, attr_name, answer, pred.frame_idx)
             label_row.add_object_instance(instance)
 
         # Frame classifications
