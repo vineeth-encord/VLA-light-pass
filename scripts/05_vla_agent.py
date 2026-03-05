@@ -27,17 +27,12 @@ Usage
 
 from __future__ import annotations
 
-import base64
-import io
 import json
 import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Iterator, Optional
-
-import numpy as np
-from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Encord imports
@@ -194,28 +189,20 @@ _SYSTEM_PROMPT = (
 # ---------------------------------------------------------------------------
 
 
-def _frame_to_b64_jpeg(frame: np.ndarray) -> str:
-    """Convert a numpy RGB frame to a base64-encoded JPEG string."""
-    pil_img = Image.fromarray(frame)
-    buf = io.BytesIO()
-    pil_img.save(buf, format="JPEG", quality=JPEG_QUALITY)
-    return base64.b64encode(buf.getvalue()).decode("utf-8")
-
-
-def run_vla_inference(frame: np.ndarray, frame_idx: int) -> FramePrediction:
+def run_vla_inference(frame_obj: Frame) -> FramePrediction:
     """
     Send a video frame to the vLLM-served Qwen2.5-VL-7B model and return
     structured predictions for the Encord VLA ontology.
 
     Args:
-        frame:     RGB numpy uint8 array (H, W, 3)
-        frame_idx: Frame number in the video
+        frame_obj: Frame dataclass with .frame (int index) and .content (numpy array)
 
     Returns:
         FramePrediction with classifications and object detections
     """
     client = _get_openai_client()
-    b64_frame = _frame_to_b64_jpeg(frame)
+    # Frame.b64_encoding(output_format="openai") returns the OpenAI image_url dict
+    image_content = frame_obj.b64_encoding(image_format=".jpeg", output_format="openai")
 
     response = client.chat.completions.create(
         model=VLLM_MODEL,
@@ -226,13 +213,7 @@ def run_vla_inference(frame: np.ndarray, frame_idx: int) -> FramePrediction:
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{b64_frame}",
-                            "detail": "high",
-                        },
-                    },
+                    image_content,
                     {
                         "type": "text",
                         "text": "Analyse this frame and return the JSON annotation.",
@@ -243,7 +224,7 @@ def run_vla_inference(frame: np.ndarray, frame_idx: int) -> FramePrediction:
     )
 
     raw_text = response.choices[0].message.content or ""
-    return _parse_response(raw_text, frame_idx)
+    return _parse_response(raw_text, frame_obj.frame)
 
 
 def _parse_response(text: str, frame_idx: int) -> FramePrediction:
@@ -407,13 +388,13 @@ def main() -> None:
 
         predictions: list[FramePrediction] = []
         for frame_obj in video_iterator:
-            if frame_obj.frame_number % INFERENCE_STRIDE != 0:
+            if frame_obj.frame % INFERENCE_STRIDE != 0:
                 continue
             try:
-                pred = run_vla_inference(frame_obj.frame, frame_obj.frame_number)
+                pred = run_vla_inference(frame_obj)
                 predictions.append(pred)
             except Exception as exc:
-                print(f"  [error] frame {frame_obj.frame_number}: {exc}")
+                print(f"  [error] frame {frame_obj.frame}: {exc}")
                 return TaskAgentReturnStruct(pathway=PATHWAY_ERROR, label_row=label_row)
 
         print(f"  {len(predictions)} frames annotated")
