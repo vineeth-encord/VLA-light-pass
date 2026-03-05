@@ -380,7 +380,8 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
 def main() -> None:
     with open(HASHES_PATH) as f:
         hashes = json.load(f)
-    project_hash = hashes["vla"]["project_hash"]
+    # Allow overriding the project hash via env var (e.g. for testing projects)
+    project_hash = os.environ.get("AGENT_PROJECT_HASH") or hashes["vla"]["project_hash"]
 
     # encord-agents reads the SSH key from ENCORD_SSH_KEY_FILE env var
     os.environ["ENCORD_SSH_KEY_FILE"] = SSH_KEY_PATH
