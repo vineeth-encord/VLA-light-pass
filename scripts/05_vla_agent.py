@@ -363,42 +363,54 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
                 _set_attr_answer(instance, attr_name, answer, pred.frame_idx)
             label_row.add_object_instance(instance)
 
-        # Frame classifications
+    # -------------------------------------------------------------------
+    # Frame classifications — group by (cls_name, answer_key) so we
+    # create ONE ClassificationInstance per unique answer and set all
+    # matching frames on it (SDK rejects overlapping frame ranges).
+    # -------------------------------------------------------------------
+    # Collect: { (cls_name, answer_key) : [frame_idx, ...] }
+    cls_groups: dict[tuple[str, str], list[int]] = {}
+    for pred in predictions:
         for cls_name, answer in pred.classifications.items():
-            onto_cls = _find_ontology_classification(ontology, cls_name)
-            if onto_cls is None:
-                print(f"  [warn] Classification '{cls_name}' not in ontology — skipping")
-                continue
-            attribute = onto_cls.attributes[0]
-            # Resolve string answer(s) → typed Option objects required by the SDK
-            try:
-                if isinstance(attribute, RadioAttribute):
-                    # answer is a single string; find the matching NestableOption by title
-                    resolved = next(
-                        (opt for opt in attribute.options if opt.title == answer), None
-                    )
-                    if resolved is None:
-                        print(f"  [warn] '{answer}' not found in {cls_name} options — skipping")
-                        continue
-                elif isinstance(attribute, ChecklistAttribute):
-                    # answer is a list of strings; find matching FlatOptions by title
-                    answer_set = set(answer) if isinstance(answer, list) else {answer}
-                    resolved = [opt for opt in attribute.options if opt.title in answer_set]
-                    if not resolved:
-                        print(f"  [warn] No matching options for {cls_name} — skipping")
-                        continue
-                else:
-                    resolved = answer  # TextAttribute — pass raw string
-            except Exception as exc:
-                print(f"  [warn] option lookup for {cls_name!r}: {exc}")
-                continue
-            cls_instance = ClassificationInstance(onto_cls)
-            cls_instance.set_for_frames(pred.frame_idx)
-            try:
-                cls_instance.set_answer(resolved, attribute)
-            except Exception as exc:
-                print(f"  [warn] set_answer({cls_name!r}): {exc}")
-            label_row.add_classification_instance(cls_instance)
+            # Use a hashable key — for checklists, freeze the sorted list
+            if isinstance(answer, list):
+                key = (cls_name, tuple(sorted(answer)))
+            else:
+                key = (cls_name, answer)
+            cls_groups.setdefault(key, []).append(pred.frame_idx)
+
+    for (cls_name, answer_key), frame_indices in cls_groups.items():
+        onto_cls = _find_ontology_classification(ontology, cls_name)
+        if onto_cls is None:
+            print(f"  [warn] Classification '{cls_name}' not in ontology — skipping")
+            continue
+        attribute = onto_cls.attributes[0]
+        # Resolve string → typed Option
+        answer_raw = list(answer_key) if isinstance(answer_key, tuple) else answer_key
+        try:
+            if isinstance(attribute, RadioAttribute):
+                resolved = next(
+                    (opt for opt in attribute.options if opt.title == answer_raw), None
+                )
+                if resolved is None:
+                    continue
+            elif isinstance(attribute, ChecklistAttribute):
+                answer_set = set(answer_raw) if isinstance(answer_raw, list) else {answer_raw}
+                resolved = [opt for opt in attribute.options if opt.title in answer_set]
+                if not resolved:
+                    continue
+            else:
+                resolved = answer_raw
+        except Exception as exc:
+            print(f"  [warn] option lookup for {cls_name!r}: {exc}")
+            continue
+        cls_instance = ClassificationInstance(onto_cls)
+        cls_instance.set_for_frames(sorted(frame_indices))
+        try:
+            cls_instance.set_answer(resolved, attribute)
+        except Exception as exc:
+            print(f"  [warn] set_answer({cls_name!r}): {exc}")
+        label_row.add_classification_instance(cls_instance)
 
 
 # ---------------------------------------------------------------------------
