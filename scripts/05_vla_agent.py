@@ -317,7 +317,11 @@ def _set_attr_answer(instance, attribute_name: str, answer, frame_idx: int = 0) 
                         return
                 else:
                     resolved = answer  # TextAttribute
-                instance.set_answer(resolved, attribute=attr, frames=frame_idx)
+                try:
+                    instance.set_answer(resolved, attribute=attr, frames=frame_idx)
+                except Exception:
+                    # Static attributes don't accept frames — retry without
+                    instance.set_answer(resolved, attribute=attr, overwrite=True)
             except Exception as exc:
                 print(f"  [warn] set_answer({attribute_name!r}): {exc}")
             return
