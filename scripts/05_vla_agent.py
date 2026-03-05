@@ -39,6 +39,7 @@ from typing import Annotated, Iterator, Optional
 # Encord imports
 # ---------------------------------------------------------------------------
 from encord.objects import OntologyStructure
+from encord.objects.classification_instance import ClassificationInstance
 from encord.objects.coordinates import BoundingBoxCoordinates, PolygonCoordinates
 from encord.storage import StorageItem
 from encord_agents.tasks import Runner
@@ -347,12 +348,14 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             if onto_cls is None:
                 print(f"  [warn] Classification '{cls_name}' not in ontology — skipping")
                 continue
-            cls_instance = label_row.add_classification_instance(onto_cls)
+            cls_instance = ClassificationInstance(onto_cls)
             cls_instance.set_for_frames(pred.frame_idx)
             try:
-                cls_instance.set_answer(onto_cls.attributes[0], answer)
+                # set_answer(answer, attribute) — attribute can be inferred for Radio/Checklist
+                cls_instance.set_answer(answer, onto_cls.attributes[0])
             except Exception as exc:
                 print(f"  [warn] set_answer({cls_name!r}): {exc}")
+            label_row.add_classification_instance(cls_instance)
 
 
 # ---------------------------------------------------------------------------
