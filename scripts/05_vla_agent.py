@@ -27,6 +27,8 @@ Usage
 
 from __future__ import annotations
 
+import base64
+import io
 import json
 import os
 import re
@@ -34,6 +36,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Iterator, Optional
+
+from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Encord imports
@@ -72,6 +76,10 @@ VLLM_BASE_URL  = os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
 VLLM_API_KEY   = os.environ.get("VLLM_API_KEY", "token-encord")   # vLLM ignores value
 VLLM_MODEL     = os.environ.get("VLLM_MODEL", "qwen-vl")          # --served-model-name
 VLLM_MAX_TOKENS = 768                  # multi-object frames need ~500 tokens; 768 is safe
+
+# Resize frames to this max side length before encoding. Keeps image token count
+# well below max_model_len (4096). At 640px Qwen2.5-VL uses ~300-500 visual tokens.
+MAX_IMAGE_SIDE = 640
 
 # Frame sampling: run inference every Nth frame (delivery videos change slowly)
 INFERENCE_STRIDE = 10
@@ -206,8 +214,17 @@ def run_vla_inference(frame_obj: Frame) -> FramePrediction:
         FramePrediction with classifications and object detections
     """
     client = _get_openai_client()
-    # Frame.b64_encoding(output_format="openai") returns the OpenAI image_url dict
-    image_content = frame_obj.b64_encoding(image_format=".jpeg", output_format="openai")
+    # Resize frame to MAX_IMAGE_SIDE before encoding so Qwen2.5-VL visual token
+    # count stays within max_model_len (4096). Full-res frames can exceed 16k tokens.
+    img = Image.fromarray(frame_obj.content)
+    img.thumbnail((MAX_IMAGE_SIDE, MAX_IMAGE_SIDE), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    image_content = {
+        "type": "image_url",
+        "image_url": {"url": f"data:image/jpeg;base64,{b64}"},
+    }
 
     response = client.chat.completions.create(
         model=VLLM_MODEL,
