@@ -42,6 +42,7 @@ from encord.objects import OntologyStructure
 from encord.objects.classification_instance import ClassificationInstance
 from encord.objects.common import ChecklistAttribute, RadioAttribute
 from encord.objects.coordinates import BoundingBoxCoordinates, PointCoordinate, PolygonCoordinates
+from encord.objects.frames import Range
 from encord.objects.ontology_object_instance import ObjectInstance
 from encord.storage import StorageItem
 from encord_agents.tasks import Runner
@@ -344,20 +345,21 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
                 print(f"  [warn] Object '{obj_pred.label}' not in ontology — skipping")
                 continue
             instance = ObjectInstance(onto_obj)
+            frame_range = Range(pred.frame_idx, pred.frame_idx + INFERENCE_STRIDE - 1)
             if obj_pred.bbox is not None:
                 x, y, w, h = obj_pred.bbox
                 instance.set_for_frames(
                     coordinates=BoundingBoxCoordinates(
                         top_left_x=x, top_left_y=y, width=w, height=h
                     ),
-                    frames=pred.frame_idx,
+                    frames=frame_range,
                 )
             elif obj_pred.polygon is not None:
                 instance.set_for_frames(
                     coordinates=PolygonCoordinates(
                         values=[PointCoordinate(x=px, y=py) for px, py in obj_pred.polygon]
                     ),
-                    frames=pred.frame_idx,
+                    frames=frame_range,
                 )
             for attr_name, answer in obj_pred.attributes.items():
                 _set_attr_answer(instance, attr_name, answer, pred.frame_idx)
@@ -408,7 +410,7 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             print(f"  [warn] option lookup for {cls_name!r}: {exc}")
             continue
         cls_instance = ClassificationInstance(onto_cls)
-        cls_instance.set_for_frames(sorted(frame_indices))
+        cls_instance.set_for_frames(Range(min(frame_indices), max(frame_indices)))
         try:
             cls_instance.set_answer(resolved, attribute)
         except Exception as exc:
