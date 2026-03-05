@@ -48,8 +48,8 @@ from encord.storage import StorageItem
 from encord_agents.tasks import Runner
 from encord_agents.core.data_model import Frame
 from encord_agents.tasks.dependencies import dep_storage_item, dep_video_iterator
+from encord_agents.core.dependencies import Depends
 from encord_agents.tasks.models import TaskAgentReturnStruct
-from fastapi import Depends
 
 from encord.objects.ontology_labels_impl import LabelRowV2
 
