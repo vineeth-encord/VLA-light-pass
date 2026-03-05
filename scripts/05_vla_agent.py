@@ -383,59 +383,84 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             label_row.add_object_instance(instance)
 
     # -------------------------------------------------------------------
-    # Frame classifications — group by (cls_name, answer_key) so we
-    # create ONE ClassificationInstance per unique answer and set all
-    # matching frames on it (SDK rejects overlapping frame ranges).
+    # Frame classifications — build contiguous same-answer segments so
+    # each ClassificationInstance covers a non-overlapping Range.
+    #
+    # Range(min, max) was wrong: if answer changes mid-video, two groups
+    # can have overlapping ranges (e.g. outdoor_path at frames 10 and 150
+    # gives Range(10,150) which covers apartment_corridor frames 30-50).
+    #
+    # Instead: walk frames in sorted order; whenever the answer changes
+    # (or there is a gap > INFERENCE_STRIDE) start a new segment.
     # -------------------------------------------------------------------
-    # Collect: { (cls_name, answer_key) : [frame_idx, ...] }
-    cls_groups: dict[tuple[str, str], list[int]] = {}
-    for pred in predictions:
+    def _normalize(answer) -> tuple:
+        """Hashable representation for comparison."""
+        return tuple(sorted(answer)) if isinstance(answer, list) else (answer,)
+
+    # Build per-classification sorted timeline: cls_name -> [(frame, answer), ...]
+    cls_timeline: dict[str, list[tuple[int, object]]] = {}
+    for pred in sorted(predictions, key=lambda p: p.frame_idx):
         for cls_name, answer in pred.classifications.items():
-            # Use a hashable key — for checklists, freeze the sorted list
-            if isinstance(answer, list):
-                key = (cls_name, tuple(sorted(answer)))
-            else:
-                key = (cls_name, answer)
-            cls_groups.setdefault(key, []).append(pred.frame_idx)
+            cls_timeline.setdefault(cls_name, []).append((pred.frame_idx, answer))
 
-    print(f"  Classification groups: {len(cls_groups)} "
-          f"({', '.join(f'{k[0]}={k[1]!r} [{len(v)}f]' for k, v in cls_groups.items())})")
+    total_segments = sum(len(v) for v in cls_timeline.values())
+    print(f"  Classifications: {len(cls_timeline)} types across "
+          f"{len(predictions)} sampled frames → building segments…")
 
-    for (cls_name, answer_key), frame_indices in cls_groups.items():
+    for cls_name, frame_answers in cls_timeline.items():
         onto_cls = _find_ontology_classification(ontology, cls_name)
         if onto_cls is None:
             print(f"  [warn] Classification '{cls_name}' not in ontology — skipping")
             continue
         attribute = onto_cls.attributes[0]
-        # Resolve string → typed Option
-        answer_raw = list(answer_key) if isinstance(answer_key, tuple) else answer_key
-        try:
-            if isinstance(attribute, RadioAttribute):
-                resolved = next(
-                    (opt for opt in attribute.options if opt.title == answer_raw), None
-                )
-                if resolved is None:
-                    continue
-            elif isinstance(attribute, ChecklistAttribute):
-                answer_set = set(answer_raw) if isinstance(answer_raw, list) else {answer_raw}
-                resolved = [opt for opt in attribute.options if opt.title in answer_set]
-                if not resolved:
-                    continue
+
+        # Walk sorted frames → collect (answer, start, end) segments
+        segments: list[tuple[object, int, int]] = []
+        seg_frame, seg_answer = frame_answers[0]
+        seg_end = seg_frame
+        for frame_idx, answer in frame_answers[1:]:
+            same = (_normalize(answer) == _normalize(seg_answer))
+            contiguous = (frame_idx - seg_end <= INFERENCE_STRIDE)
+            if same and contiguous:
+                seg_end = frame_idx
             else:
-                resolved = answer_raw
-        except Exception as exc:
-            print(f"  [warn] option lookup for {cls_name!r}: {exc}")
-            continue
-        cls_instance = ClassificationInstance(onto_cls)
-        cls_instance.set_for_frames(Range(min(frame_indices), max(frame_indices)))
-        try:
-            cls_instance.set_answer(resolved, attribute)
-        except Exception as exc:
-            print(f"  [warn] set_answer({cls_name!r}): {exc}")
-        try:
-            label_row.add_classification_instance(cls_instance)
-        except Exception as exc:
-            print(f"  [warn] add_classification({cls_name!r}): {exc}")
+                segments.append((seg_answer, seg_frame, seg_end))
+                seg_frame, seg_answer, seg_end = frame_idx, answer, frame_idx
+        segments.append((seg_answer, seg_frame, seg_end))
+
+        print(f"    {cls_name}: {len(segments)} segment(s) — "
+              f"{', '.join(f'{a!r}[{s}:{e}]' for a, s, e in segments)}")
+
+        for answer_raw, start, end in segments:
+            # Resolve string → typed Option
+            try:
+                if isinstance(attribute, RadioAttribute):
+                    resolved = next(
+                        (opt for opt in attribute.options if opt.title == answer_raw), None
+                    )
+                    if resolved is None:
+                        print(f"  [warn] '{answer_raw}' not a valid option for {cls_name!r}")
+                        continue
+                elif isinstance(attribute, ChecklistAttribute):
+                    answer_set = set(answer_raw) if isinstance(answer_raw, list) else {answer_raw}
+                    resolved = [opt for opt in attribute.options if opt.title in answer_set]
+                    if not resolved:
+                        continue
+                else:
+                    resolved = answer_raw
+            except Exception as exc:
+                print(f"  [warn] option lookup for {cls_name!r}: {exc}")
+                continue
+            cls_instance = ClassificationInstance(onto_cls)
+            cls_instance.set_for_frames(Range(start, end))
+            try:
+                cls_instance.set_answer(resolved, attribute)
+            except Exception as exc:
+                print(f"  [warn] set_answer({cls_name!r}): {exc}")
+            try:
+                label_row.add_classification_instance(cls_instance)
+            except Exception as exc:
+                print(f"  [warn] add_classification({cls_name!r}): {exc}")
 
 
 # ---------------------------------------------------------------------------
