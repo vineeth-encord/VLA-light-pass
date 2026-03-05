@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Annotated, Iterator, Optional
@@ -66,13 +67,13 @@ PATHWAY_ERROR     = "error"
 VLLM_BASE_URL  = os.environ.get("VLLM_BASE_URL", "http://127.0.0.1:8000/v1")
 VLLM_API_KEY   = os.environ.get("VLLM_API_KEY", "token-encord")   # vLLM ignores value
 VLLM_MODEL     = os.environ.get("VLLM_MODEL", "qwen-vl")          # --served-model-name
-VLLM_MAX_TOKENS = 512
+VLLM_MAX_TOKENS = 256                  # JSON output is ~150 tokens; 256 is safe headroom
 
-# Frame sampling: run inference every Nth frame
-INFERENCE_STRIDE = 5
+# Frame sampling: run inference every Nth frame (delivery videos change slowly)
+INFERENCE_STRIDE = 10
 
-# JPEG quality for frames sent to vLLM (lower = faster, higher = more accurate)
-JPEG_QUALITY = 85
+# Max frames sent to vLLM in parallel — matches vLLM --max-num-seqs 64 with headroom
+INFERENCE_CONCURRENCY = 16
 
 # ---------------------------------------------------------------------------
 # Ontology constants (must match vla_ontology.json exactly)
@@ -386,16 +387,26 @@ def main() -> None:
 
         label_row.initialise_labels(overwrite=True)
 
+        # Sample frames then run inference in parallel
+        sampled = [f for f in video_iterator if f.frame % INFERENCE_STRIDE == 0]
+        print(f"  Sampled {len(sampled)} frames (stride={INFERENCE_STRIDE}), "
+              f"running {INFERENCE_CONCURRENCY} in parallel…")
+
         predictions: list[FramePrediction] = []
-        for frame_obj in video_iterator:
-            if frame_obj.frame % INFERENCE_STRIDE != 0:
-                continue
-            try:
-                pred = run_vla_inference(frame_obj)
-                predictions.append(pred)
-            except Exception as exc:
-                print(f"  [error] frame {frame_obj.frame}: {exc}")
-                return TaskAgentReturnStruct(pathway=PATHWAY_ERROR, label_row=label_row)
+        errors: list[str] = []
+        with ThreadPoolExecutor(max_workers=INFERENCE_CONCURRENCY) as pool:
+            futures = {pool.submit(run_vla_inference, f): f for f in sampled}
+            for future in as_completed(futures):
+                frame_obj = futures[future]
+                try:
+                    predictions.append(future.result())
+                except Exception as exc:
+                    errors.append(f"frame {frame_obj.frame}: {exc}")
+                    print(f"  [error] frame {frame_obj.frame}: {exc}")
+
+        if errors:
+            print(f"  {len(errors)} frame(s) failed — routing to '{PATHWAY_ERROR}'")
+            return TaskAgentReturnStruct(pathway=PATHWAY_ERROR, label_row=label_row)
 
         print(f"  {len(predictions)} frames annotated")
         write_predictions_to_label_row(label_row, predictions)
