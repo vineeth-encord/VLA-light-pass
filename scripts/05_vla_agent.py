@@ -62,7 +62,7 @@ SSH_KEY_PATH = os.environ.get(
 HASHES_PATH = Path(__file__).parent.parent / "project_hashes.json"
 
 # Encord workflow stage / pathway names (must match the UI)
-AGENT_STAGE_NAME  = "Quen-VLA"
+AGENT_STAGE_NAME  = "Qwen-VLA"
 PATHWAY_ANNOTATED = "annotated"
 PATHWAY_ERROR     = "error"
 
