@@ -42,6 +42,7 @@ from encord.objects import OntologyStructure
 from encord.objects.classification_instance import ClassificationInstance
 from encord.objects.common import ChecklistAttribute, RadioAttribute
 from encord.objects.coordinates import BoundingBoxCoordinates, PolygonCoordinates
+from encord.objects.ontology_object_instance import ObjectInstance
 from encord.storage import StorageItem
 from encord_agents.tasks import Runner
 from encord_agents.core.data_model import Frame
@@ -324,7 +325,7 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             if onto_obj is None:
                 print(f"  [warn] Object '{obj_pred.label}' not in ontology — skipping")
                 continue
-            instance = label_row.add_object_instance(onto_obj)
+            instance = ObjectInstance(onto_obj)
             if obj_pred.bbox is not None:
                 x, y, w, h = obj_pred.bbox
                 instance.set_for_frames(
@@ -342,6 +343,7 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
                 )
             for attr_name, answer in obj_pred.attributes.items():
                 _set_attr_answer(instance, attr_name, answer)
+            label_row.add_object_instance(instance)
 
         # Frame classifications
         for cls_name, answer in pred.classifications.items():
