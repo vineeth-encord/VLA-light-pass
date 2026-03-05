@@ -1,6 +1,3 @@
-# DoorDash × Encord Demo Assets
-
-Demo materials for the DoorDash egocentric data / VLA annotation platform demo.
 
 ## Quick Start
 
