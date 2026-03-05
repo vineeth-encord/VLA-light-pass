@@ -40,6 +40,7 @@ from typing import Annotated, Iterator, Optional
 # ---------------------------------------------------------------------------
 from encord.objects import OntologyStructure
 from encord.objects.classification_instance import ClassificationInstance
+from encord.objects.common import ChecklistAttribute, RadioAttribute
 from encord.objects.coordinates import BoundingBoxCoordinates, PolygonCoordinates
 from encord.storage import StorageItem
 from encord_agents.tasks import Runner
@@ -348,11 +349,33 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             if onto_cls is None:
                 print(f"  [warn] Classification '{cls_name}' not in ontology — skipping")
                 continue
+            attribute = onto_cls.attributes[0]
+            # Resolve string answer(s) → typed Option objects required by the SDK
+            try:
+                if isinstance(attribute, RadioAttribute):
+                    # answer is a single string; find the matching NestableOption by title
+                    resolved = next(
+                        (opt for opt in attribute.options if opt.title == answer), None
+                    )
+                    if resolved is None:
+                        print(f"  [warn] '{answer}' not found in {cls_name} options — skipping")
+                        continue
+                elif isinstance(attribute, ChecklistAttribute):
+                    # answer is a list of strings; find matching FlatOptions by title
+                    answer_set = set(answer) if isinstance(answer, list) else {answer}
+                    resolved = [opt for opt in attribute.options if opt.title in answer_set]
+                    if not resolved:
+                        print(f"  [warn] No matching options for {cls_name} — skipping")
+                        continue
+                else:
+                    resolved = answer  # TextAttribute — pass raw string
+            except Exception as exc:
+                print(f"  [warn] option lookup for {cls_name!r}: {exc}")
+                continue
             cls_instance = ClassificationInstance(onto_cls)
             cls_instance.set_for_frames(pred.frame_idx)
             try:
-                # set_answer(answer, attribute) — attribute can be inferred for Radio/Checklist
-                cls_instance.set_answer(answer, onto_cls.attributes[0])
+                cls_instance.set_answer(resolved, attribute)
             except Exception as exc:
                 print(f"  [warn] set_answer({cls_name!r}): {exc}")
             label_row.add_classification_instance(cls_instance)
