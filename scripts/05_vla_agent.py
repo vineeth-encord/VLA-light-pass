@@ -365,10 +365,14 @@ def write_predictions_to_label_row(label_row, predictions: list[FramePrediction]
             frame_range = Range(pred.frame_idx, pred.frame_idx + INFERENCE_STRIDE - 1)
             if obj_pred.bbox is not None:
                 x, y, w, h = obj_pred.bbox
+                # Ontology objects are Polygon type — convert bbox to rectangle polygon
                 instance.set_for_frames(
-                    coordinates=BoundingBoxCoordinates(
-                        top_left_x=x, top_left_y=y, width=w, height=h
-                    ),
+                    coordinates=PolygonCoordinates(values=[
+                        PointCoordinate(x=x,     y=y),
+                        PointCoordinate(x=x + w, y=y),
+                        PointCoordinate(x=x + w, y=y + h),
+                        PointCoordinate(x=x,     y=y + h),
+                    ]),
                     frames=frame_range,
                 )
             elif obj_pred.polygon is not None:
