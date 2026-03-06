@@ -1,11 +1,11 @@
 """
 02_upload_demo_data.py
 ----------------------
-Stages local hand-tracking sample clips for the demo and uploads them
+Stages Robot egocentric manipulation clips and uploads them
 to the Encord datasets created in script 01.
 
 Source clips:
-  ~/Downloads/HandtrackingSamples/  — egocentric hand manipulation videos
+  Set LOCAL_CLIPS_DIR below to the directory containing robot videos.
 
 Usage:
     export ENCORD_SSH_KEY_PATH=~/.ssh/id_ed25519
@@ -29,36 +29,16 @@ HASHES_FILE = PROJECT_DIR / "project_hashes.json"
 DATA_DIR = PROJECT_DIR / "demo_data"
 DATA_DIR.mkdir(exist_ok=True)
 
-LOCAL_CLIPS_DIR = Path.home() / "Downloads" / "HandtrackingSamples"
+LOCAL_CLIPS_DIR = Path.home() / "Downloads" / "robot_clips"  # TODO: update path to robot data
 
-# Hand tracking sample clips — egocentric hand manipulation footage.
-# dataset_key: "vla"        → VLA Egocentric (action/object/affordance annotation)
-#              "world_model" → World Model (top-view scene understanding)
+# Robot egocentric manipulation clips.
+# dataset_key: "vla"        → VLA Egocentric (manipulation verb+noun annotation)
+#              "world_model" → World Model (scene understanding)
 #              "audio"       → Multimodal audio + transcription
 DEMO_CLIPS = [
-    # --- VLA Egocentric dataset (first-person hand manipulation) ---
-    {"name": "Aayan_4.mp4",        "description": "Egocentric hand manipulation — Aayan session 4",        "dataset_key": "vla"},
-    {"name": "Aayan_5.mp4",        "description": "Egocentric hand manipulation — Aayan session 5",        "dataset_key": "vla"},
-    {"name": "Karan_5.mp4",        "description": "Egocentric hand manipulation — Karan session 5",        "dataset_key": "vla"},
-    {"name": "Prathamesh_1.mp4",   "description": "Egocentric hand manipulation — Prathamesh session 1",   "dataset_key": "vla"},
-    {"name": "Prathamesh_2.mp4",   "description": "Egocentric hand manipulation — Prathamesh session 2",   "dataset_key": "vla"},
-    {"name": "Sameer_2.mp4",       "description": "Egocentric hand manipulation — Sameer session 2",       "dataset_key": "vla"},
-    {"name": "Sameer_3.mp4",       "description": "Egocentric hand manipulation — Sameer session 3",       "dataset_key": "vla"},
-    {"name": "Sameer_5.mp4",       "description": "Egocentric hand manipulation — Sameer session 5",       "dataset_key": "vla"},
-    {"name": "Sarfaraz_1.mp4",     "description": "Egocentric hand manipulation — Sarfaraz session 1",     "dataset_key": "vla"},
-    {"name": "Sarfaraz_3.mp4",     "description": "Egocentric hand manipulation — Sarfaraz session 3",     "dataset_key": "vla"},
-    {"name": "Varsha_H4.mp4",      "description": "Egocentric hand manipulation — Varsha session 4",       "dataset_key": "vla"},
-    {"name": "Varsha_H5.mp4",      "description": "Egocentric hand manipulation — Varsha session 5",       "dataset_key": "vla"},
-    {"name": "Vinayak_2.mp4",      "description": "Egocentric hand manipulation — Vinayak session 2",      "dataset_key": "vla"},
-    {"name": "Vinayak_3.mp4",      "description": "Egocentric hand manipulation — Vinayak session 3",      "dataset_key": "vla"},
-    # --- World Model dataset (top-view / scene understanding) ---
-    {"name": "Aayan_TopView_SpoonTransfer.mp4",          "description": "Top-view spoon transfer — scene understanding",            "dataset_key": "world_model"},
-    {"name": "Aayan_TopView_WaterTransfer.mp4",          "description": "Top-view water transfer — scene understanding",            "dataset_key": "world_model"},
-    {"name": "Sameer_TopView_pastatransfer.mp4",         "description": "Top-view pasta transfer — scene understanding",            "dataset_key": "world_model"},
-    {"name": "Sameer_TpView_SpoonZipbagTransfer.mp4",    "description": "Top-view spoon + zip-bag transfer — scene understanding",  "dataset_key": "world_model"},
-    {"name": "arranging_shoes_and_slipper_bedroom_up_14_003.mov", "description": "Object arrangement from above — scene understanding", "dataset_key": "world_model"},
-    # --- Audio dataset (multimodal annotation) ---
-    {"name": "Vinayak_1.mp4",      "description": "Hand manipulation with audio — multimodal annotation",  "dataset_key": "audio"},
+    # --- VLA Egocentric dataset (robot manipulation) ---
+    # TODO: Replace with actual robot video filenames
+    # {"name": "kitchen_pickup_001.mp4", "description": "Robot pick-and-place in kitchen", "dataset_key": "vla"},
 ]
 
 

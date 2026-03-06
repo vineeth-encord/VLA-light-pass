@@ -2,7 +2,8 @@
 05_vla_agent.py
 ---------------
 Encord Task Agent that uses Qwen2.5-VL-7B (served by vLLM on the GH200) to
-pre-annotate egocentric delivery videos with the VLA Egocentric ontology.
+pre-annotate humanoid robot egocentric manipulation videos with Ego4D-style
+verb+noun action decomposition.
 
 Inference backend
 -----------------
@@ -81,7 +82,7 @@ VLLM_MAX_TOKENS = 768                  # multi-object frames need ~500 tokens; 7
 # well below max_model_len (4096). At 640px Qwen2.5-VL uses ~300-500 visual tokens.
 MAX_IMAGE_SIDE = 640
 
-# Frame sampling: run inference every Nth frame (delivery videos change slowly)
+# Frame sampling: run inference every Nth frame (robot manipulation changes slowly)
 INFERENCE_STRIDE = 10
 
 # Max frames sent to vLLM in parallel — matches vLLM --max-num-seqs 64 with headroom
@@ -91,27 +92,29 @@ INFERENCE_CONCURRENCY = 16
 # Ontology constants (must match vla_ontology.json exactly)
 # ---------------------------------------------------------------------------
 
-ACTION_PHASE_OPTIONS = [
-    "navigating_to_location", "approaching_entrance", "interacting_with_access_control",
-    "carrying_item", "placing_item", "handing_item_to_person", "scanning_confirming",
-    "returning_to_vehicle", "waiting", "other",
+MANIPULATION_PHASE_OPTIONS = [
+    "idle", "approaching_object", "pre_grasp_positioning", "grasping",
+    "transporting", "placing", "post_place_retract", "tool_use",
+    "bimanual_coordination", "recovery_adjustment",
 ]
-SCENE_ENV_OPTIONS = [
-    "outdoor_street", "outdoor_parking", "outdoor_path", "building_lobby",
-    "building_hallway", "building_elevator", "apartment_corridor",
-    "residential_front", "commercial_entrance", "other",
+SCENE_CONTEXT_OPTIONS = [
+    "kitchen", "living_room", "bedroom", "bathroom", "hallway",
+    "office_workspace", "garage_utility", "dining_area", "entryway", "other",
 ]
 VIDEO_QUALITY_OPTIONS = [
     "camera_shake", "motion_blur", "occlusion_heavy", "low_light",
-    "overexposed", "partial_frame", "clean",
+    "overexposed", "depth_artifact", "clean",
 ]
-TASK_COMPLETION_OPTIONS = [
-    "successful_delivery", "left_at_door", "handed_to_person",
-    "failed_no_access", "failed_no_recipient", "returned_to_vehicle",
+TASK_OUTCOME_OPTIONS = [
+    "success", "partial_success", "failed_dropped",
+    "failed_unreachable", "in_progress",
+]
+MOTION_MODE_OPTIONS = [
+    "stationary_manipulating", "walking_carrying", "walking_empty",
+    "turning", "transitioning",
 ]
 OBJECT_LABELS = [
-    "Active Hand", "Manipulated Object", "Target Location",
-    "Person / Recipient", "Obstacle / Hazard",
+    "End Effector", "Manipulated Object", "Target Surface", "Obstacle",
 ]
 
 # ---------------------------------------------------------------------------
@@ -157,14 +160,16 @@ def _get_openai_client():
 # ---------------------------------------------------------------------------
 
 _SYSTEM_PROMPT = (
-    "You are an expert video annotator for egocentric last-mile delivery footage. "
+    "You are an expert video annotator for humanoid robot egocentric manipulation footage. "
     "Analyse the provided frame and respond ONLY with a valid JSON object — no markdown, "
-    "no extra text.\n\n"
+    "no extra text. Focus on describing what the robot's end effector is doing to objects.\n\n"
     "Schema:\n"
     "{\n"
-    '  "action_phase": "<one of ACTION_PHASE_OPTIONS>",\n'
-    '  "scene_environment": "<one of SCENE_ENV_OPTIONS>",\n'
+    '  "manipulation_phase": "<one of MANIPULATION_PHASE_OPTIONS>",\n'
+    '  "scene_context": "<one of SCENE_CONTEXT_OPTIONS>",\n'
     '  "video_quality": ["<zero or more from VIDEO_QUALITY_OPTIONS>"],\n'
+    '  "task_outcome": "<one of TASK_OUTCOME_OPTIONS or null>",\n'
+    '  "motion_mode": "<one of MOTION_MODE_OPTIONS>",\n'
     '  "objects": [\n'
     "    {\n"
     '      "label": "<one of OBJECT_LABELS>",\n'
@@ -173,26 +178,29 @@ _SYSTEM_PROMPT = (
     "    }\n"
     "  ]\n"
     "}\n\n"
-    f"ACTION_PHASE_OPTIONS: {json.dumps(ACTION_PHASE_OPTIONS)}\n"
-    f"SCENE_ENV_OPTIONS: {json.dumps(SCENE_ENV_OPTIONS)}\n"
+    f"MANIPULATION_PHASE_OPTIONS: {json.dumps(MANIPULATION_PHASE_OPTIONS)}\n"
+    f"SCENE_CONTEXT_OPTIONS: {json.dumps(SCENE_CONTEXT_OPTIONS)}\n"
     f"VIDEO_QUALITY_OPTIONS: {json.dumps(VIDEO_QUALITY_OPTIONS)}\n"
+    f"TASK_OUTCOME_OPTIONS: {json.dumps(TASK_OUTCOME_OPTIONS)}\n"
+    f"MOTION_MODE_OPTIONS: {json.dumps(MOTION_MODE_OPTIONS)}\n"
     f"OBJECT_LABELS: {json.dumps(OBJECT_LABELS)}\n\n"
     "Object attribute schemas:\n"
-    '  "Active Hand": hand_side (left|right|both), '
-    "hand_state (empty|holding_rigid|holding_flexible|in_contact|reaching), "
-    "grasp_type (power_grasp|pinch_grasp|hook_grasp|none)\n"
-    '  "Manipulated Object": object_category (package_bag|package_box|package_envelope|'
-    "food_container|food_bag|beverage|door_handle|doorbell|keypad|mailbox|phone_device|other), "
-    "affordances [list of: graspable|pushable|openable|pressable|liftable|fragile|heavy], "
-    "interaction_phase (approaching|grasping|carrying|placing|releasing|none)\n"
-    '  "Target Location": location_type (front_door|doorstep|mailbox|lobby_desk|locker|'
-    "hand_to_person|doorman|other), "
-    "accessibility (direct_access|requires_keypad|requires_doorbell|requires_buzzer|gated)\n"
-    '  "Person / Recipient": person_role (recipient|bystander|doorman|unknown), '
-    "attention_state (looking_at_agent|aware_of_agent|unaware|approaching)\n"
-    '  "Obstacle / Hazard": hazard_type (vehicle|cyclist|pedestrian|step_curb|'
-    "wet_surface|narrow_passage|dog_animal|other), "
-    "severity (minor|moderate|blocking)\n\n"
+    '  "End Effector": effector_side (left|right|both), '
+    "effector_state (open|closing|grasping|holding|releasing), "
+    "grasp_type (power_grasp|pinch_grasp|hook_grasp|precision_grasp|palmar_grasp|none), "
+    "contact_type (single_hand|bimanual|bracing|whole_body|no_contact)\n"
+    '  "Manipulated Object": object_category (cup_mug|bottle|plate_bowl|food_item|utensil|'
+    "container_box|bag|cloth_towel|tool|remote_device|book_paper|door_handle|drawer_handle|"
+    "knob_switch|key|phone|other), "
+    "object_property [list of: rigid|deformable|transparent|fragile|heavy|small|articulated], "
+    "manipulation_verb (reach|grasp|lift|carry|place|release|push|pull|open|close|rotate|"
+    "insert|slide|press|hold|pour|wipe|tear|fold|stack|none)\n"
+    '  "Target Surface": surface_type (table|countertop|shelf|floor|drawer|cabinet|sink|'
+    "appliance_surface|bed|chair_sofa|hook_rack|bin_trash|other), "
+    "surface_height (ground_level|low|waist_height|chest_height|overhead)\n"
+    '  "Obstacle": obstacle_type (person|pet|furniture|wall_fixture|cord_cable|clutter|'
+    "fragile_item|other), "
+    "proximity (in_path|adjacent|distant)\n\n"
     "Only include objects that are clearly visible. Omit any object that is not present."
 )
 
@@ -266,13 +274,17 @@ def _parse_response(text: str, frame_idx: int) -> FramePrediction:
         return pred
 
     # Frame classifications
-    if data.get("action_phase") in ACTION_PHASE_OPTIONS:
-        pred.classifications["Action Phase"] = data["action_phase"]
-    if data.get("scene_environment") in SCENE_ENV_OPTIONS:
-        pred.classifications["Scene Environment"] = data["scene_environment"]
+    if data.get("manipulation_phase") in MANIPULATION_PHASE_OPTIONS:
+        pred.classifications["Manipulation Phase"] = data["manipulation_phase"]
+    if data.get("scene_context") in SCENE_CONTEXT_OPTIONS:
+        pred.classifications["Scene Context"] = data["scene_context"]
     valid_quality = [f for f in data.get("video_quality", []) if f in VIDEO_QUALITY_OPTIONS]
     if valid_quality:
         pred.classifications["Video Quality"] = valid_quality
+    if data.get("task_outcome") in TASK_OUTCOME_OPTIONS:
+        pred.classifications["Task Outcome"] = data["task_outcome"]
+    if data.get("motion_mode") in MOTION_MODE_OPTIONS:
+        pred.classifications["Motion Mode"] = data["motion_mode"]
 
     # Object detections
     for obj in data.get("objects", []):

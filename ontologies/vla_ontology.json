@@ -1,180 +1,199 @@
 {
-  "title": "VLA Egocentric — Dasher Delivery",
-  "description": "Vision-Language-Action ontology for egocentric video annotation. Designed for training VLA models on last-mile delivery tasks. Compatible with OpenVLA, RT-2, Octo, and Gato-style action specifications.",
-  "version": "1.0",
+  "title": "VLA Egocentric — Robotics Manipulation",
+  "description": "Vision-Language-Action ontology for egocentric robot video annotation. Designed for training VLA models on humanoid robot manipulation tasks. Verb+noun decomposition for fine-grained action labeling.",
+  "version": "2.0",
   "objects": [
     {
-      "name": "Active Hand",
+      "name": "End Effector",
       "shape": "POLYGON",
-      "description": "The dominant/active hand performing an action. Track across frames.",
+      "description": "The robot's end effector (gripper/hand) performing manipulation. Track across frames.",
       "attributes": [
         {
           "type": "radio",
-          "name": "hand_side",
+          "name": "effector_side",
           "required": true,
           "options": ["left", "right", "both"]
         },
         {
           "type": "radio",
-          "name": "hand_state",
+          "name": "effector_state",
           "required": true,
-          "options": ["empty", "holding_rigid", "holding_flexible", "in_contact", "reaching"]
+          "options": ["open", "closing", "grasping", "holding", "releasing"]
         },
         {
           "type": "radio",
           "name": "grasp_type",
           "required": false,
-          "options": ["power_grasp", "pinch_grasp", "hook_grasp", "none"]
+          "options": ["power_grasp", "pinch_grasp", "hook_grasp", "precision_grasp", "palmar_grasp", "none"]
+        },
+        {
+          "type": "radio",
+          "name": "contact_type",
+          "required": false,
+          "options": ["single_hand", "bimanual", "bracing", "whole_body", "no_contact"]
         }
       ]
     },
     {
       "name": "Manipulated Object",
-      "shape": "BOUNDING_BOX",
-      "description": "Object the agent is currently interacting with or about to interact with.",
+      "shape": "POLYGON",
+      "description": "Object the robot is currently interacting with or about to interact with.",
       "attributes": [
         {
           "type": "radio",
           "name": "object_category",
           "required": true,
           "options": [
-            "package_bag",
-            "package_box",
-            "package_envelope",
-            "food_container",
-            "food_bag",
-            "beverage",
+            "cup_mug",
+            "bottle",
+            "plate_bowl",
+            "food_item",
+            "utensil",
+            "container_box",
+            "bag",
+            "cloth_towel",
+            "tool",
+            "remote_device",
+            "book_paper",
             "door_handle",
-            "doorbell",
-            "keypad",
-            "mailbox",
-            "phone_device",
+            "drawer_handle",
+            "knob_switch",
+            "key",
+            "phone",
             "other"
           ]
         },
         {
           "type": "checklist",
-          "name": "affordances",
+          "name": "object_property",
           "required": false,
           "options": [
-            "graspable",
-            "pushable",
-            "openable",
-            "pressable",
-            "liftable",
+            "rigid",
+            "deformable",
+            "transparent",
             "fragile",
-            "heavy"
+            "heavy",
+            "small",
+            "articulated"
           ]
         },
         {
           "type": "radio",
-          "name": "interaction_phase",
+          "name": "manipulation_verb",
           "required": true,
-          "options": ["approaching", "grasping", "carrying", "placing", "releasing", "none"]
+          "options": [
+            "reach",
+            "grasp",
+            "lift",
+            "carry",
+            "place",
+            "release",
+            "push",
+            "pull",
+            "open",
+            "close",
+            "rotate",
+            "insert",
+            "slide",
+            "press",
+            "hold",
+            "pour",
+            "wipe",
+            "tear",
+            "fold",
+            "stack",
+            "none"
+          ]
         }
       ]
     },
     {
-      "name": "Target Location",
-      "shape": "BOUNDING_BOX",
-      "description": "Where the object is being delivered to or retrieved from.",
+      "name": "Target Surface",
+      "shape": "POLYGON",
+      "description": "Where the object is being placed on or retrieved from.",
       "attributes": [
         {
           "type": "radio",
-          "name": "location_type",
+          "name": "surface_type",
           "required": true,
           "options": [
-            "front_door",
-            "doorstep",
-            "mailbox",
-            "lobby_desk",
-            "locker",
-            "hand_to_person",
-            "doorman",
+            "table",
+            "countertop",
+            "shelf",
+            "floor",
+            "drawer",
+            "cabinet",
+            "sink",
+            "appliance_surface",
+            "bed",
+            "chair_sofa",
+            "hook_rack",
+            "bin_trash",
             "other"
           ]
         },
         {
           "type": "radio",
-          "name": "accessibility",
+          "name": "surface_height",
           "required": false,
-          "options": ["direct_access", "requires_keypad", "requires_doorbell", "requires_buzzer", "gated"]
+          "options": ["ground_level", "low", "waist_height", "chest_height", "overhead"]
         }
       ]
     },
     {
-      "name": "Person / Recipient",
-      "shape": "BOUNDING_BOX",
-      "description": "Any person visible in the scene, especially the recipient of delivery.",
+      "name": "Obstacle",
+      "shape": "POLYGON",
+      "description": "Objects or elements that affect robot navigation or safe manipulation.",
       "attributes": [
         {
           "type": "radio",
-          "name": "person_role",
+          "name": "obstacle_type",
           "required": true,
-          "options": ["recipient", "bystander", "doorman", "unknown"]
+          "options": ["person", "pet", "furniture", "wall_fixture", "cord_cable", "clutter", "fragile_item", "other"]
         },
         {
           "type": "radio",
-          "name": "attention_state",
+          "name": "proximity",
           "required": false,
-          "options": ["looking_at_agent", "aware_of_agent", "unaware", "approaching"]
-        }
-      ]
-    },
-    {
-      "name": "Obstacle / Hazard",
-      "shape": "BOUNDING_BOX",
-      "description": "Objects or elements that affect navigation or safe delivery.",
-      "attributes": [
-        {
-          "type": "radio",
-          "name": "hazard_type",
-          "required": true,
-          "options": ["vehicle", "cyclist", "pedestrian", "step_curb", "wet_surface", "narrow_passage", "dog_animal", "other"]
-        },
-        {
-          "type": "radio",
-          "name": "severity",
-          "required": false,
-          "options": ["minor", "moderate", "blocking"]
+          "options": ["in_path", "adjacent", "distant"]
         }
       ]
     }
   ],
   "frame_classifications": [
     {
-      "name": "Action Phase",
-      "description": "High-level action the agent is currently performing. One label per frame.",
+      "name": "Manipulation Phase",
+      "description": "High-level manipulation phase the robot is currently in. One label per frame.",
       "type": "radio",
       "required": true,
       "options": [
-        "navigating_to_location",
-        "approaching_entrance",
-        "interacting_with_access_control",
-        "carrying_item",
-        "placing_item",
-        "handing_item_to_person",
-        "scanning_confirming",
-        "returning_to_vehicle",
-        "waiting",
-        "other"
+        "idle",
+        "approaching_object",
+        "pre_grasp_positioning",
+        "grasping",
+        "transporting",
+        "placing",
+        "post_place_retract",
+        "tool_use",
+        "bimanual_coordination",
+        "recovery_adjustment"
       ]
     },
     {
-      "name": "Scene Environment",
-      "description": "Physical environment context for the current frame.",
+      "name": "Scene Context",
+      "description": "Physical room or area context for the current frame.",
       "type": "radio",
       "required": true,
       "options": [
-        "outdoor_street",
-        "outdoor_parking",
-        "outdoor_path",
-        "building_lobby",
-        "building_hallway",
-        "building_elevator",
-        "apartment_corridor",
-        "residential_front",
-        "commercial_entrance",
+        "kitchen",
+        "living_room",
+        "bedroom",
+        "bathroom",
+        "hallway",
+        "office_workspace",
+        "garage_utility",
+        "dining_area",
+        "entryway",
         "other"
       ]
     },
@@ -189,22 +208,34 @@
         "occlusion_heavy",
         "low_light",
         "overexposed",
-        "partial_frame",
+        "depth_artifact",
         "clean"
       ]
     },
     {
-      "name": "Task Completion",
-      "description": "Final delivery outcome (annotate on last frame of clip).",
+      "name": "Task Outcome",
+      "description": "Task completion status (annotate on final frames of task sequence).",
       "type": "radio",
       "required": false,
       "options": [
-        "successful_delivery",
-        "left_at_door",
-        "handed_to_person",
-        "failed_no_access",
-        "failed_no_recipient",
-        "returned_to_vehicle"
+        "success",
+        "partial_success",
+        "failed_dropped",
+        "failed_unreachable",
+        "in_progress"
+      ]
+    },
+    {
+      "name": "Motion Mode",
+      "description": "Whether the robot base is moving during manipulation. Critical for mobile manipulators.",
+      "type": "radio",
+      "required": false,
+      "options": [
+        "stationary_manipulating",
+        "walking_carrying",
+        "walking_empty",
+        "turning",
+        "transitioning"
       ]
     }
   ]

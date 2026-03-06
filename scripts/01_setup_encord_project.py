@@ -2,7 +2,7 @@
 01_setup_encord_project.py
 --------------------------
 Creates three Encord ontologies and projects on the platform from the JSON spec files:
-  1. VLA Egocentric — Dasher Delivery
+  1. VLA Egocentric — Robotics Manipulation
   2. World Model — Egocentric Scene Understanding
   3. Multimodal Audio — Voice & Environmental Sound
 
@@ -167,10 +167,10 @@ def main():
     vla_ontology_hash = create_ontology_from_file(
         client, ONTOLOGY_DIR / "vla_ontology.json"
     )
-    vla_dataset_hash = create_demo_dataset(client, "DoorDash Demo — VLA Egocentric")
+    vla_dataset_hash = create_demo_dataset(client, "Robotics — VLA Egocentric")
     vla_project_hash = create_project(
         client,
-        title="DoorDash Demo — VLA Egocentric Delivery",
+        title="Robotics — VLA Egocentric Manipulation",
         dataset_hashes=[vla_dataset_hash],
         ontology_hash=vla_ontology_hash,
     )
@@ -184,10 +184,10 @@ def main():
     wm_ontology_hash = create_ontology_from_file(
         client, ONTOLOGY_DIR / "world_model_ontology.json"
     )
-    wm_dataset_hash = create_demo_dataset(client, "DoorDash Demo — World Model")
+    wm_dataset_hash = create_demo_dataset(client, "Robotics — World Model")
     wm_project_hash = create_project(
         client,
-        title="DoorDash Demo — World Model Scene Understanding",
+        title="Robotics — World Model Scene Understanding",
         dataset_hashes=[wm_dataset_hash],
         ontology_hash=wm_ontology_hash,
     )
@@ -201,10 +201,10 @@ def main():
     audio_ontology_hash = create_ontology_from_file(
         client, ONTOLOGY_DIR / "audio_transcription_ontology.json"
     )
-    audio_dataset_hash = create_demo_dataset(client, "DoorDash Demo — Audio Transcription")
+    audio_dataset_hash = create_demo_dataset(client, "Robotics — Audio Transcription")
     audio_project_hash = create_project(
         client,
-        title="DoorDash Demo — Multimodal Audio Annotation",
+        title="Robotics — Multimodal Audio Annotation",
         dataset_hashes=[audio_dataset_hash],
         ontology_hash=audio_ontology_hash,
     )

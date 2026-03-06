@@ -22,7 +22,7 @@ def _synthetic_frame() -> np.ndarray:
     img = Image.new("RGB", (640, 480), color=(100, 150, 200))
     draw = ImageDraw.Draw(img)
     draw.rectangle([80, 120, 300, 300], outline="white", width=3)
-    draw.text((90, 310), "test delivery frame", fill="white")
+    draw.text((90, 310), "test manipulation frame", fill="white")
     return np.array(img)
 
 
@@ -72,8 +72,8 @@ def main() -> None:
             {
                 "role": "system",
                 "content": (
-                    "You are a delivery video annotator. Respond with a single JSON object: "
-                    '{"action_phase": "...", "scene_environment": "...", "objects": []}'
+                    "You are a robot manipulation video annotator. Respond with a single JSON object: "
+                    '{"manipulation_phase": "...", "scene_context": "...", "motion_mode": "...", "objects": []}'
                 ),
             },
             {
@@ -83,7 +83,7 @@ def main() -> None:
                         "type": "image_url",
                         "image_url": {"url": f"data:image/jpeg;base64,{b64}", "detail": "high"},
                     },
-                    {"type": "text", "text": "Annotate this frame."},
+                    {"type": "text", "text": "Annotate this robot manipulation frame."},
                 ],
             },
         ],
